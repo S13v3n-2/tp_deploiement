@@ -98,7 +98,11 @@ jobs:
     env:
       SSH_HOST: ${{ vars.DEPLOY_IP }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      DEPLOY_PATH: /home/ubuntu/tp-deploiement
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Configurer la clé SSH
         run: |
           mkdir -p ~/.ssh
@@ -107,21 +111,35 @@ jobs:
           echo "ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts"
           ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts
 
-      - name: Déployer le conteneur via SSH
+      - name: Créer le répertoire de déploiement sur la VM
+        run: |
+          ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST "mkdir -p ${{ env.DEPLOY_PATH }}/nginx"
+
+      - name: Copier compose.prod.yml et la config Nginx sur la VM
+        run: |
+          scp -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new compose.prod.yml ubuntu@$SSH_HOST:${{ env.DEPLOY_PATH }}/compose.prod.yml
+          scp -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new nginx/default.conf ubuntu@$SSH_HOST:${{ env.DEPLOY_PATH }}/nginx/default.conf
+
+      - name: Déployer la stack via docker compose
         env:
-          CONTAINER_NAME: api-tp-cicd
           TARGET_IMAGE: ${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST "
-            echo 'Arrêt et nettoyage de l ancien conteneur...'
-            docker stop ${{ env.CONTAINER_NAME }} || true
-            docker rm ${{ env.CONTAINER_NAME }} || true
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USERNAME' --password-stdin
 
-            echo 'Récupération de la nouvelle image : ${{ env.TARGET_IMAGE }}'
-            docker pull ${{ env.TARGET_IMAGE }}
+            export DOCKERHUB_IMAGE=$TARGET_IMAGE
+            export IMAGE_TAG=$IMAGE_TAG
 
-            echo 'Démarrage du conteneur...'
-            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:80 ${{ env.TARGET_IMAGE }}
+            echo 'Récupération de la nouvelle image : $TARGET_IMAGE:$IMAGE_TAG'
+            docker compose -f compose.prod.yml pull
+
+            echo 'Redémarrage de la stack (idempotent)...'
+            docker compose -f compose.prod.yml up -d --remove-orphans
 
             docker image prune -f
           "
