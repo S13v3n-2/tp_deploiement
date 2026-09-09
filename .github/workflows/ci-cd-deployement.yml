@@ -108,17 +108,25 @@ jobs:
           ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts
 
       - name: Déployer le conteneur via SSH
-        run: |
-          ssh -i ~/.ssh/private.pem ubuntu@$SSH_HOST << EOF
-            IMAGE_NAME="${{ env.IMAGE_NAME }}"
-            CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
-            docker stop $CONTAINER_NAME || true
-            docker rm $CONTAINER_NAME || true
-            docker pull $IMAGE_NAME
-            docker run --name $CONTAINER_NAME -d --restart unless-stopped -p 8080:80 $IMAGE_NAME
-          EOF
         env:
           CONTAINER_NAME: api-tp-cicd
+        run: |
+          ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST << EOF
+            IMAGE_TARGET="${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            
+            echo "Arrêt et nettoyage de l'ancien conteneur..."
+            docker stop ${{ env.CONTAINER_NAME }} || true
+            docker rm ${{ env.CONTAINER_NAME }} || true
+            
+            echo "Récupération de la nouvelle image..."
+            docker pull \$IMAGE_TARGET
+            
+            echo "Démarrage du conteneur..."
+            # Mapping 8080:8080 (ou 8080:3000 selon le port interne de votre application)
+            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:8080 \$IMAGE_TARGET
+            
+            docker image prune -f
+          EOF
 
   healthcheck:
     needs: deploy
