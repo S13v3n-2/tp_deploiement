@@ -121,7 +121,7 @@ jobs:
             docker pull ${{ env.TARGET_IMAGE }}
 
             echo 'Démarrage du conteneur...'
-            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:8080 ${{ env.TARGET_IMAGE }}
+            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:80 ${{ env.TARGET_IMAGE }}
 
             docker image prune -f
           "
