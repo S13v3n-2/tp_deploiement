@@ -98,45 +98,33 @@ jobs:
     env:
       SSH_HOST: ${{ vars.DEPLOY_IP }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      IMAGE_TAG: ${{ github.sha }}
     steps:
       - name: Configurer la clé SSH
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/private.pem
           chmod 600 ~/.ssh/private.pem
-          ssh-keyscan -H "$SSH_HOST" > ~/.ssh/known_hosts
+          echo "ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts"
+          ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts
 
       - name: Déployer le conteneur via SSH
+        run: |
+          ssh -i ~/.ssh/private.pem ubuntu@$SSH_HOST << EOF
+            IMAGE_NAME="${{ env.IMAGE_NAME }}"
+            CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+            docker pull $IMAGE_NAME
+            docker run --name $CONTAINER_NAME -d --restart unless-stopped -p 8080:80 $IMAGE_NAME
+          EOF
         env:
           CONTAINER_NAME: api-tp-cicd
-        run: |
-          ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST << EOF
-            IMAGE_TARGET="${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-            
-            echo "Arrêt et nettoyage de l'ancien conteneur..."
-            docker stop ${{ env.CONTAINER_NAME }} || true
-            docker rm ${{ env.CONTAINER_NAME }} || true
-            
-            echo "Récupération de la nouvelle image..."
-            docker pull \$IMAGE_TARGET
-            
-            echo "Démarrage du conteneur..."
-            # Mapping 8080:8080 (ou 8080:3000 selon le port interne de votre application)
-            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:8080 \$IMAGE_TARGET
-            
-            docker image prune -f
-          EOF
 
-      - name: Vérifier que l'application répond (Smoke test)
-        run: |
-          echo "Attente de la disponibilité de l'application sur http://$SSH_HOST:8080/healthcheck..."
-          for i in $(seq 1 15); do
-            if curl -sf "http://$SSH_HOST:8080/healthcheck"; then
-              echo "Application saine et déployée avec succès !"
-              exit 0
-            fi
-            sleep 3
-          done
-          echo "Échec : L'application ne répond pas sur la VM"
-          exit 1
+  healthcheck:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test healthcheck on deployed app
+        run: sleep 3 && curl http://$DEPLOY_IP:3000/health
+        env:
+          DEPLOY_IP: ${{ vars.DEPLOY_IP }}
