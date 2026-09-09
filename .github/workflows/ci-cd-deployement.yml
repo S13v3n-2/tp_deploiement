@@ -119,11 +119,11 @@ jobs:
             docker rm ${{ env.CONTAINER_NAME }} || true
             
             echo "Récupération de la nouvelle image..."
-            docker pull \$IMAGE_TARGET
+            docker pull $IMAGE_TARGET
             
             echo "Démarrage du conteneur..."
             # Mapping 8080:8080 (ou 8080:3000 selon le port interne de votre application)
-            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:8080 \$IMAGE_TARGET
+            docker run --name ${{ env.CONTAINER_NAME }} -d --restart unless-stopped -p 8080:8080 $IMAGE_TARGET
             
             docker image prune -f
           EOF
