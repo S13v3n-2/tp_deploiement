@@ -105,7 +105,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/private.pem
           chmod 600 ~/.ssh/private.pem
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SSH_HOST" > ~/.ssh/known_hosts
 
       - name: Déployer le conteneur via SSH
         env:
