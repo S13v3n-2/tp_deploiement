@@ -110,7 +110,7 @@ jobs:
       - name: Déployer le conteneur via SSH
         env:
           CONTAINER_NAME: api-tp-cicd
-          TARGET_IMAGE: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          TARGET_IMAGE: ${{ env.IMAGE_NAME }}
         run: |
           ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST "
             echo 'Arrêt et nettoyage de l ancien conteneur...'
