@@ -138,6 +138,10 @@ jobs:
             echo 'Récupération de la nouvelle image : $TARGET_IMAGE:$IMAGE_TAG'
             docker compose -f compose.prod.yml pull
 
+            echo 'Nettoyage des anciens conteneurs occupant le port 8080 (hors stack compose)...'
+            docker rm -f api-tp-cicd 2>/dev/null || true
+            docker ps -q --filter 'publish=8080' | grep -v -f <(docker compose -f compose.prod.yml ps -q) | xargs -r docker rm -f
+
             echo 'Redémarrage de la stack (idempotent)...'
             docker compose -f compose.prod.yml up -d --remove-orphans
 
