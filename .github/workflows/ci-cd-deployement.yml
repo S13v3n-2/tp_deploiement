@@ -118,7 +118,7 @@ jobs:
             docker stop ${{ env.CONTAINER_NAME }} || true
             docker rm ${{ env.CONTAINER_NAME }} || true
             
-            echo "Récupération de la nouvelle image..."
+            echo "Récupération de la nouvelle image... $IMAGE_TARGET"
             docker pull $IMAGE_TARGET
             
             echo "Démarrage du conteneur..."
