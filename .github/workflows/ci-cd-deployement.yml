@@ -112,7 +112,7 @@ jobs:
           CONTAINER_NAME: api-tp-cicd
         run: |
           ssh -i ~/.ssh/private.pem -o StrictHostKeyChecking=accept-new ubuntu@$SSH_HOST << EOF
-            IMAGE_TARGET="${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            IMAGE_TARGET="${{ env.IMAGE_NAME }}"
             
             echo "Arrêt et nettoyage de l'ancien conteneur..."
             docker stop ${{ env.CONTAINER_NAME }} || true
