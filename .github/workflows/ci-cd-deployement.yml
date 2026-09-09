@@ -133,6 +133,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Test healthcheck on deployed app
-        run: sleep 3 && curl http://$DEPLOY_IP:8080/health
+        run: sleep 3 && curl http://$DEPLOY_IP:8080/healthcheck
         env:
           DEPLOY_IP: ${{ vars.DEPLOY_IP }}
